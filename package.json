@@ -1,0 +1,33 @@
+{
+  "name": "rtm",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsc-watch --onSuccess \"node build/\""
+  },
+  "dependencies": {
+    "@types/amqplib": "^0.5.13",
+    "amqplib": "^0.5.6",
+    "koa": "^2.12.0",
+    "koa-bodyparser": "^4.3.0",
+    "log4js": "^6.3.0",
+    "telegraf": "^3.38.0",
+    "uuid": "^8.1.0",
+    "ws": "^7.3.0"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^8.2.0",
+    "@types/koa": "^2.11.3",
+    "@types/koa-bodyparser": "^4.3.0",
+    "@types/koa-router": "^7.4.1",
+    "@types/log4js": "^2.3.5",
+    "@types/node": "^14.0.6",
+    "@types/ws": "^7.2.4",
+    "dotenv": "^8.2.0",
+    "prettier": "^2.0.5",
+    "tsc-watch": "^4.2.8",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.3"
+  }
+}

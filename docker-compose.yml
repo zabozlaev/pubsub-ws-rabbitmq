@@ -1,0 +1,23 @@
+version: "3.4"
+
+services:
+  rabbit:
+    image: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: zabozlaev
+      RABBITMQ_DEFAULT_PASS: 123
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - PORT=3023
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: always
+    ports:
+      - "3023:3023"
