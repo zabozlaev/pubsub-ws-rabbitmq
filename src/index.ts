@@ -3,7 +3,7 @@ import { createServer, IncomingMessage } from 'http';
 import * as WebSocket from 'ws';
 import { EventEmitter } from 'events';
 
-import { createQueue, Queue } from './queue';
+import { Queue } from './queue';
 import { logger } from './logger';
 
 type WsConn = WebSocket & { id?: string };
@@ -86,7 +86,8 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', async (ws, req) => {
   (ws as WsConn).id = v4();
 
-  const queue = await createQueue();
+  const queue = await Queue.create();
+
   const router = new WsRouter(queue, (...data) => {});
 
   ws.on('message', (body) => {

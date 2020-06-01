@@ -19,35 +19,34 @@ export class Queue {
   ack(msg: amqp.Message) {
     this._channel.ack(msg);
   }
-}
-
-export const createQueue = async () => {
-  const channel = await new Promise<amqp.Channel>((resolve, reject) =>
-    amqp.connect(
-      {
-        hostname: 'rabbit',
-        port: 5672,
-        username: 'zabozlaev',
-        password: '123',
-        protocol: 'amqp',
-      },
-      (err, conn) => {
-        if (err) {
-          logger.error(err);
-          reject(err);
-        }
-
-        logger.info(`Connected to RabbitMQ`);
-        conn.createChannel(function (err, channel) {
+  static async create() {
+    const channel = await new Promise<amqp.Channel>((resolve, reject) =>
+      amqp.connect(
+        {
+          hostname: 'rabbit',
+          port: 5672,
+          username: 'zabozlaev',
+          password: '123',
+          protocol: 'amqp',
+        },
+        (err, conn) => {
           if (err) {
             logger.error(err);
             reject(err);
           }
-          resolve(channel);
-        });
-      },
-    ),
-  );
 
-  return new Queue(channel);
-};
+          logger.info(`Connected to RabbitMQ`);
+          conn.createChannel(function (err, channel) {
+            if (err) {
+              logger.error(err);
+              reject(err);
+            }
+            resolve(channel);
+          });
+        },
+      ),
+    );
+
+    return new Queue(channel);
+  }
+}
