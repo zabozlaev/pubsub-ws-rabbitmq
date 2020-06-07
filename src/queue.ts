@@ -19,6 +19,7 @@ export class Queue {
   ack(msg: amqp.Message) {
     this._channel.ack(msg);
   }
+
   static async create() {
     const channel = await new Promise<amqp.Channel>((resolve, reject) =>
       amqp.connect(

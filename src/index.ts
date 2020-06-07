@@ -83,47 +83,48 @@ const server = createServer((req, res) => res.end('404'));
 
 const wss = new WebSocket.Server({ server });
 
-wss.on('connection', async (ws, req) => {
-  (ws as WsConn).id = v4();
-
+const start = async () => {
   const queue = await Queue.create();
-
   const router = new WsRouter(queue, (...data) => {});
+  wss.on('connection', async (ws, req) => {
+    (ws as WsConn).id = v4();
 
-  ws.on('message', (body) => {
-    try {
-      const { event, data } = JSON.parse(body as string);
-      router.emit(event, wss, ws, req, data, (event, data) =>
-        ws.send(JSON.stringify({ event, data })),
-      );
-    } catch (error) {
-      logger.error(error);
-      ws.close();
-    }
+    ws.on('message', (body) => {
+      try {
+        const { event, data } = JSON.parse(body as string);
+        router.emit(event, wss, ws, req, data, (event, data) =>
+          ws.send(JSON.stringify({ event, data })),
+        );
+      } catch (error) {
+        logger.error(error);
+        ws.close();
+      }
 
-    const handler = (wss, ws, req, data, reply) => {
-      ws('bye', { bye: 'mate' });
-    };
+      const handler = (wss, ws, req, data, reply) => {
+        ws('bye', { bye: 'mate' });
+      };
 
-    const subscribeHandler = (wss, ws, req, data, reply) => {
-      reply('success', { message: `successful subscription for: news` });
-      router.subscribe('news', ws);
-    };
+      const subscribeHandler = (wss, ws, req, data, reply) => {
+        reply('success', { message: `successful subscription for: news` });
+        router.subscribe('news', ws);
+      };
 
-    const newsHandler = (wss, ws, req, data, reply) => {
-      queue.publishToQueue('news', data);
-    };
+      const newsHandler = (wss, ws, req, data, reply) => {
+        queue.publishToQueue('news', data);
+      };
 
-    router.on('hello', handler);
-    router.on('subscribe:news', subscribeHandler);
-    router.on('news', newsHandler);
+      router.on('hello', handler);
+      router.on('subscribe:news', subscribeHandler);
+      router.on('news', newsHandler);
+    });
+
+    ws.on('close', () =>
+      router.emit('close', wss, ws, null, null, (_, __) => {}),
+    );
   });
+  server.listen(3023, () => {
+    logger.info(`Pubsub ready on ${process.env.PORT}`);
+  });
+};
 
-  ws.on('close', () =>
-    router.emit('close', wss, ws, null, null, (_, __) => {}),
-  );
-});
-
-server.listen(3023, () => {
-  logger.info(`Pubsub ready on ${process.env.PORT}`);
-});
+start();
