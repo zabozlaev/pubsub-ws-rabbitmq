@@ -3,8 +3,10 @@ import { createServer, IncomingMessage } from 'http';
 import * as WebSocket from 'ws';
 import { EventEmitter } from 'events';
 
-import { Queue } from './queue';
+import { Amqp, Channel } from './amqp';
+
 import { logger } from './logger';
+import { Message } from 'amqplib/callback_api';
 
 type WsConn = WebSocket & { id?: string };
 
@@ -27,7 +29,7 @@ class WsRouter {
   private _subscribers: { [key: string]: WsConn[] };
   private _emitter: EventEmitter;
 
-  constructor(public queue: Queue, unknownEventHander) {
+  constructor(public queueChannel: Channel, unknownEventHander) {
     this._unknownEventHandler = unknownEventHander;
     this._events = [];
     this._subscribers = {};
@@ -46,9 +48,10 @@ class WsRouter {
     let subs = this._subscribers[name];
     if (!subs) {
       this._subscribers[name] = [];
-      this.queue.consume(name, (msg) => {
-        this.resolveSubscription(name, msg);
-        this.queue.ack(msg);
+      this.queueChannel.consume(async (msg) => {
+        await this.resolveSubscription(msg);
+
+        this.queueChannel.ack(msg);
       });
     }
 
@@ -56,13 +59,16 @@ class WsRouter {
     this._subscribers[name].push(client);
   }
 
-  resolveSubscription(name, data) {
+  resolveSubscription(data: Message) {
     const clients = this._subscribers[name];
+
+    const parsed = JSON.parse(data.content.toString());
+
     clients.forEach((client) =>
       client.send(
         JSON.stringify({
-          event: `subscription:${name}`,
-          data: JSON.parse(data.content),
+          event: `subscription:${parsed.topic}`,
+          data: parsed.data,
         }),
       ),
     );
@@ -84,8 +90,12 @@ const server = createServer((req, res) => res.end('404'));
 const wss = new WebSocket.Server({ server });
 
 const start = async () => {
-  const queue = await Queue.create();
-  const router = new WsRouter(queue, (...data) => {});
+  const amqp = new Amqp();
+  await amqp.connect();
+
+  const channel = await amqp.createChannel('pubsub');
+
+  const router = new WsRouter(channel, (...data) => {});
   wss.on('connection', async (ws, req) => {
     (ws as WsConn).id = v4();
 
@@ -101,7 +111,7 @@ const start = async () => {
       }
 
       const handler = (wss, ws, req, data, reply) => {
-        ws('bye', { bye: 'mate' });
+        reply('bye', { bye: 'mate' });
       };
 
       const subscribeHandler = (wss, ws, req, data, reply) => {
@@ -110,7 +120,10 @@ const start = async () => {
       };
 
       const newsHandler = (wss, ws, req, data, reply) => {
-        queue.publishToQueue('news', data);
+        channel.publishToQueue({
+          data,
+          topic: 'news',
+        });
       };
 
       router.on('hello', handler);
